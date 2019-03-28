@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  "AWS Example Setup For Secrets in ECS / ECS Fargate"
+
+Parameters:
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: >
+      "ID of the VPC to deploy the containers to."
+
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >
+      "IDs of the Subnets to deploy the containers to."
+
+Resources:
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties: {}
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      TaskDefinition: !Ref 'TaskDefinition'
+      DesiredCount: 1
+      LaunchType: 'FARGATE'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref 'Subnets'
+          SecurityGroups:
+            - !Ref SecurityGroup
+          AssignPublicIp: 'ENABLED'
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: 'awsvpc'
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !Ref TaskRole
+      TaskRoleArn: !Ref TaskRole
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        -
+          Name: "asecretservice"
+          Image: "mvandongen/asecretservice:latest"
+          PortMappings:
+            - ContainerPort: 80
+          Environment:
+            - Name: "SECRET"
+              Value: "ssm://my.little.secret"
+            - Name: "SECRET_SDK"
+              Value: "ssm_sdk://my.little.secret"
+            - Name: "SECRET_SDK_PREFIX"
+              Value: "ssm_sdk://"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: ecs
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref 'VpcId'
+      GroupDescription: "Public access to container"
+      SecurityGroupIngress:
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: 'tcp'
+          CidrIp: "0.0.0.0/0"
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}"
