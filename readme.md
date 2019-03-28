@@ -1,6 +1,9 @@
-# Secrets in Fargate
+This blog post is published here:
+https://binx.io/blog/2019/03/28/secrets-in-aws-ecs-fargate/ 
 
-There are multiple ways to use ‘secrets’ in ECS and ECS Fargate. Most of the time they are exposed using Environment variables, because a few years ago this was the only easy option. Today we have two options. You could add a tool to your docker container which retrieves and decrypts your secrets, or embed the retrieval and decryption in your application. Both approaches are covered in this blog post. This is what we are going to do:
+# Secrets in AWS ECS Fargate
+
+There are many ways to use ‘secrets’ in ECS and ECS Fargate. Most of the time they are exposed using Environment variables, because a few years ago this was the only easy option. Today we have two improved options. You could add a tool to your docker container which retrieves and decrypts your secrets before parsing them to the application. The other one is to embed the retrieval and decryption in the application. Both approaches are covered in this blog post. This is what we are going to do:
 
 1. Put a secret in the SSM Parameter Store
 2. Add the ssm-env tool to your Dockerfile to replace secrets at ‘boot time’
@@ -196,5 +199,6 @@ In the second example, from the application perspective, it’s just an environm
 
 It now becomes really easy to rotate secrets. It even doesn’t require a deployment.
 
-1) update the secret in the SSM parameter store
-2) gracefully terminate containers (assuming auto healing is enabled)
+1. Update the secret in the SSM parameter store
+2. Gracefully terminate containers
+3. New containers with new secrets are recovered
